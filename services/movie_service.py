@@ -3,8 +3,8 @@ from clients.base import MovieDataSupplier
 from schemas.movie import Movie
 
 class MovieService:
-    def __init__(self, provider: MovieDataSupplier):
-        self.provider = provider
+    def __init__(self, movie_data_supplier: MovieDataSupplier):
+        self.movie_data_supplier = movie_data_supplier
 
     async def search_movies(
         self,
@@ -13,6 +13,6 @@ class MovieService:
         actors: Optional[List[str]],
         genre: Optional[str]
     ) -> List[Movie]:
-        return await self.provider.search(title, media_type, genre, actors)
+        return await self.movie_data_supplier.search(title, media_type, genre, actors)
 
 

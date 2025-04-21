@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from fastapi import HTTPException
 
 class OMDBClient(MovieDataSupplier):
-    __OMDB_BASE_URL = "https://www.omdbapi.com/?apikey=a2d62ef1&s=ar"
+    __OMDB_BASE_URL = "https://www.omdbapi.com/"
 
     async def search(
         self,
@@ -19,13 +19,16 @@ class OMDBClient(MovieDataSupplier):
             # Throw Exception
             return HTTPException(status_code=404)
 
-        endpoint = f"{self.__OMDB_BASE_URL}/?apikey={settings.OMDB_API_KEY}&s={title}"
+        endpoint = f"{self.__OMDB_BASE_URL}?apikey={settings.OMDB_API_KEY}&s={title}"
 
         if media_type:
-            endpoint.append(f"&type={media_type}")
+            endpoint += (f"&type={media_type}")
+
+        print("endpoint: " + endpoint)
 
         async with AsyncClient() as client:
             response = await client.get(endpoint)
+            print(response.json())
             results = response.json().get("Search", {})
 
-        return List(results)
+        return list(results)
