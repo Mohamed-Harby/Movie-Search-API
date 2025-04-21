@@ -101,16 +101,33 @@ class TMDBClient(MovieDataSupplier):
         
         movies = []
         for r in results:
-            movies.append(self.__convert_to_schema(r))
+            movies.append(await self.__convert_to_schema(r))
 
         return movies
     
 
-    def __convert_to_schema(self, api_movie):
+    async def __get_genre(self, id: int, media_type: str = "movie"):
+        endpoint = f"{self.__TMDB_BASE_URL}/genre/{media_type}/list"
+        async with AsyncClient() as client:
+            resp = await client.get(endpoint, headers=self.headers)
+            genres = resp.json().get("genres", [])
+            for genre in genres:
+                if genre["id"] == id:
+                    return str(genre["name"])
+        return None
+
+    async def __convert_to_schema(self, api_movie):
+        
+        movie_genres = []
+        
+        for genre in api_movie.get("genre_ids"):
+            movie_genres.append(await self.__get_genre(genre))
+
+
         return Movie(
             title=api_movie.get("title"),
             year=api_movie.get("release_date").split("-")[0],
-            genre=[str(api_movie.get("genre_ids")),],
+            genres=movie_genres,
             poster_url=f"https://image.tmdb.org/t/p/w500{api_movie['poster_path']}" if api_movie.get("poster_path") else None,
             source="tmdb"
         )

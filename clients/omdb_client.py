@@ -5,30 +5,41 @@ from config.settings import settings
 from httpx import AsyncClient
 from fastapi import HTTPException
 
+
 class OMDBClient(MovieDataSupplier):
-    __OMDB_BASE_URL = "https://www.omdbapi.com/"
+    BASE_URL = "https://www.omdbapi.com/"
 
     async def search(
         self,
         title: Optional[str],
         media_type: Optional[str],
-        genre: Optional[str],
-        actors: Optional[List[str]]
+        genre: Optional[str],  # not used by OMDB API
+        actors: Optional[List[str]]  # not used by OMDB API
     ) -> List[Movie]:
+        
         if not title:
-            # Throw Exception
-            raise HTTPException(status_code=400, detail="The title is a required field!")        
+            raise HTTPException(status_code=400, detail="The title is a required field!")
 
-        endpoint = f"{self.__OMDB_BASE_URL}?apikey={settings.OMDB_API_KEY}&s={title}"
+        params = {
+            "apikey": settings.OMDB_API_KEY,
+            "s": title
+        }
 
         if media_type:
-            endpoint += (f"&type={media_type}")
-
-        print("endpoint: " + endpoint)
+            params["type"] = media_type
 
         async with AsyncClient() as client:
-            response = await client.get(endpoint)
-            print(response.json())
-            results = response.json().get("Search")
+            response = await client.get(self.BASE_URL, params=params)
+            data = response.json()
 
-        return results
+        results = data.get("Search", [])
+        return [self._convert_to_schema(item) for item in results]
+
+    def _convert_to_schema(self, api_movie) -> Movie:
+        return Movie(
+            title=api_movie.get("Title"),
+            year=api_movie.get("Year"),
+            genres=[],  # OMDB doesn't provide genre here
+            poster_url=api_movie.get("Poster"),
+            source="omdb"
+        )
