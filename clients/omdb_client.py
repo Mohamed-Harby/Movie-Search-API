@@ -17,7 +17,7 @@ class OMDBClient(MovieDataSupplier):
     ) -> List[Movie]:
         if not title:
             # Throw Exception
-            return HTTPException(status_code=404)
+            raise HTTPException(status_code=400, detail="The title is a required field!")        
 
         endpoint = f"{self.__OMDB_BASE_URL}?apikey={settings.OMDB_API_KEY}&s={title}"
 
@@ -29,6 +29,6 @@ class OMDBClient(MovieDataSupplier):
         async with AsyncClient() as client:
             response = await client.get(endpoint)
             print(response.json())
-            results = response.json().get("Search", {})
+            results = response.json().get("Search")
 
-        return list(results)
+        return results

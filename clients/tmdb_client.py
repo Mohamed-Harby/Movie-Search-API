@@ -45,7 +45,7 @@ class TMDBClient(MovieDataSupplier):
 
         async with AsyncClient() as client:
             response = await client.get(endpoint, headers=self.headers)
-            results = response.json().get("results", [])
+            results = response.json().get("results")
             return results
         
     async def __search_by_actors_and_genre(
@@ -70,7 +70,7 @@ class TMDBClient(MovieDataSupplier):
         endpoint = f"{self.__TMDB_BASE_URL}/discover/{media_type}"
         async with AsyncClient() as client:
             response = await client.get(endpoint, params=params, headers=self.headers)
-            results = response.json().get("results", [])
+            results = response.json().get("results")
 
         # Filter title manually
             if title:
