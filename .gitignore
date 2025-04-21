@@ -1,0 +1,62 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Environment variables
+.env
+.env.*
+
+# Python virtual environments
+env/
+venv/
+.env/
+.venv/
+
+# macOS system files
+.DS_Store
+
+# Pytest cache
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Coverage reports
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+.cache
+
+# FastAPI & Uvicorn logs
+*.log
+
+# VSCode settings
+.vscode/
+
+# Idea project settings
+.idea/
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Test and debug artifacts
+*.sqlite3
+*.db
+
+# Ignore local dev tools
+*.swp
+*.swo
+
+# Docker
+*.pid
+*.pid.lock
+
+# Pydantic compiled
+__pydantic_cache__/
