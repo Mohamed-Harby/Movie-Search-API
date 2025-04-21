@@ -40,13 +40,46 @@ class TMDBClient(MovieDataSupplier):
         return None
 
 
-    async def search_by_title(self, title: str):
-        endpoint = f"{self.__TMDB_BASE_URL}/search/movie?query={title}"
+    async def __search_by_title(self, title: str, media_type: str):
+        endpoint = f"{self.__TMDB_BASE_URL}/search/{media_type}?query={title}"
+
         async with AsyncClient() as client:
             response = await client.get(endpoint, headers=self.headers)
             results = response.json().get("results", [])
             return results
         
+    async def __search_by_actors_and_genre(
+            self,
+            title: str,
+            media_type: str,
+            actors: List[str],
+            genre: str
+    ):
+        params = {}
+        results = []
+        if actors:
+                cast_ids = await self.__get_person_ids(actors)
+                if cast_ids:
+                    params["with_cast"] = ",".join(cast_ids)
+
+        if genre:
+            genre_id = await self.__get_genre_id(genre, media_type)
+            if genre_id:
+                params["with_genres"] = genre_id
+
+        endpoint = f"{self.__TMDB_BASE_URL}/discover/{media_type}"
+        async with AsyncClient() as client:
+            response = await client.get(endpoint, params=params, headers=self.headers)
+            results = response.json().get("results", [])
+
+        # Filter title manually
+            if title:
+                results = [
+                    r for r in results
+                    if title.lower() in r.get("title").lower() 
+                ]
+            
+        return results
 
     async def search(
             self,
@@ -55,50 +88,30 @@ class TMDBClient(MovieDataSupplier):
             actors: Optional[List[str]],
             genre: Optional[str]
         ) -> List[Movie]:
-        params = {}
-
-
-        results = []
+        
+        if not title and not (actors or genre):
+            raise HTTPException(status_code=400, detail="At least one of title, actors, or genre must be provided!")        
+        
+        
         
         if actors or genre:
-            if actors:
-                cast_ids = await self.__get_person_ids(actors)
-                if cast_ids:
-                    params["with_cast"] = ",".join(cast_ids)
+            results = await self.__search_by_actors_and_genre(title, media_type, actors, genre)
 
-            if genre:
-                genre_id = await self.__get_genre_id(genre, media_type)
-                if genre_id:
-                    params["with_genres"] = genre_id
-
-            endpoint = f"{self.__TMDB_BASE_URL}/discover/{media_type}"
-            async with AsyncClient() as client:
-                response = await client.get(endpoint, params=params, headers=self.headers)
-                results = response.json().get("results", [])
-
-            # Filter title manually
-            if title:
-                results = [
-                    r for r in results
-                    if title.lower() in r.get("title").lower() 
-                ]
-
-        elif title:
-            results = await self.search_by_title(title)
+        results = await self.__search_by_title(title, media_type)
         
-        else:
-            return HTTPException(status_code=404, detail="No enough search args!")
-
         movies = []
-
         for r in results:
-            movie = Movie(
-            title=r.get("title"),
-            year=r.get("release_date").split("-")[0],
-            genre=[str(r.get("genre_ids")),],
-            poster_url=f"https://image.tmdb.org/t/p/w500{r['poster_path']}" if r.get("poster_path") else None,
-            source="tmdb"
-            )
-            movies.append(movie)
+            movies.append(self.__convert_to_schema(r))
 
         return movies
+    
+
+    def __convert_to_schema(self, api_movie):
+        return Movie(
+            title=api_movie.get("title"),
+            year=api_movie.get("release_date").split("-")[0],
+            genre=[str(api_movie.get("genre_ids")),],
+            poster_url=f"https://image.tmdb.org/t/p/w500{api_movie['poster_path']}" if api_movie.get("poster_path") else None,
+            source="tmdb"
+        )
+    
