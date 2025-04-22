@@ -1,85 +1,18 @@
 from typing import List, Optional
 from httpx import AsyncClient
-from clients.base import MovieDataSupplier
+from clients.base import Supplier
 from config.settings import settings
 from schemas.movie import Movie
 from fastapi import HTTPException
 
-class TMDBClient(MovieDataSupplier):
-    __TMDB_BASE_URL = "https://api.themoviedb.org/3"
+class TMDBSupplier(Supplier):
+    BASE_URL = "https://api.themoviedb.org/3"
 
-    def __init__(self):
+    def __init__(self, api_key: str):
         self.headers = {
-            "Authorization": f"Bearer {settings.TMDB_API_KEY}",
+            "Authorization": f"Bearer {api_key}",
             "accept": "application/json"
         }
-
-    async def __get_person_ids(self, names: List[str]) -> List[str]:
-        ids = []
-        async with AsyncClient() as client:
-            for name in names:
-                resp = await client.get(
-                    f"{self.__TMDB_BASE_URL}/search/person",
-                    params={"query": name},
-                    headers=self.headers
-                )
-                results = resp.json().get("results")
-                if results:
-                    ids.append(str(results[0]["id"]))
-        return ids
-
-
-    async def __get_genre_id(self, name: str, media_type: str) -> Optional[str]:
-        endpoint = f"{self.__TMDB_BASE_URL}/genre/{media_type}/list"
-        async with AsyncClient() as client:
-            resp = await client.get(endpoint, headers=self.headers)
-            genres = resp.json().get("genres", [])
-            for genre in genres:
-                if genre["name"].lower() == name.lower():
-                    return str(genre["id"])
-        return None
-
-
-    async def __search_by_title(self, title: str, media_type: str):
-        endpoint = f"{self.__TMDB_BASE_URL}/search/{media_type}?query={title}"
-
-        async with AsyncClient() as client:
-            response = await client.get(endpoint, headers=self.headers)
-            results = response.json().get("results")
-            return results
-        
-    async def __search_by_actors_and_genre(
-            self,
-            title: str,
-            media_type: str,
-            actors: List[str],
-            genre: str
-    ):
-        params = {}
-        results = []
-        if actors:
-                cast_ids = await self.__get_person_ids(actors)
-                if cast_ids:
-                    params["with_cast"] = ",".join(cast_ids)
-
-        if genre:
-            genre_id = await self.__get_genre_id(genre, media_type)
-            if genre_id:
-                params["with_genres"] = genre_id
-
-        endpoint = f"{self.__TMDB_BASE_URL}/discover/{media_type}"
-        async with AsyncClient() as client:
-            response = await client.get(endpoint, params=params, headers=self.headers)
-            results = response.json().get("results")
-
-        # Filter title manually
-            if title:
-                results = [
-                    r for r in results
-                    if title.lower() in r.get("title").lower() 
-                ]
-            
-        return results
 
     async def search(
             self,
@@ -92,13 +25,13 @@ class TMDBClient(MovieDataSupplier):
         if not title and not (actors or genre):
             raise HTTPException(status_code=400, detail="At least one of title, actors, or genre must be provided!")        
         
-        
-        
         if actors or genre:
             results = await self.__search_by_actors_and_genre(title, media_type, actors, genre)
 
         results = await self.__search_by_title(title, media_type)
         
+        return [self.__convert_to_schema(item) for item in results]
+
         movies = []
         for r in results:
             movies.append(await self.__convert_to_schema(r))
@@ -106,10 +39,88 @@ class TMDBClient(MovieDataSupplier):
         return movies
     
 
-    async def __get_genre(self, id: int, media_type: str = "movie"):
-        endpoint = f"{self.__TMDB_BASE_URL}/genre/{media_type}/list"
+
+    async def __get_person_ids(self, names: List[str]) -> List[str]:
+        ids = []
         async with AsyncClient() as client:
-            resp = await client.get(endpoint, headers=self.headers)
+            for name in names:
+                resp = await client.get(
+                    f"{self.BASE_URL}/search/person",
+                    params={"query": name},
+                    headers=self.headers
+                )
+                results = resp.json().get("results")
+                if results:
+                    ids.append(str(results[0]["id"]))
+        return ids
+
+
+    async def __get_genre_id(self, name: str, media_type: str) -> Optional[str]:
+        async with AsyncClient() as client:
+            resp = await client.get(
+                f"{self.BASE_URL}/genre/{media_type}/list",
+                headers=self.headers)
+            genres = resp.json().get("genres", [])
+            for genre in genres:
+                if genre["name"].lower() == name.lower():
+                    return str(genre["id"])
+        return None
+
+
+    async def __search_by_title(self, title: str, media_type: str):
+        async with AsyncClient() as client:
+            response = await client.get(
+                f"{self.BASE_URL}/search/{media_type}?query={title}",
+                headers=self.headers)
+            results = response.json().get("results")
+            return results
+        
+    async def __search_by_actors_and_genre(
+            self,
+            title: str,
+            media_type: str,
+            actors: List[str],
+            genre: str
+    ):
+        params = {}
+        results = []
+
+
+        media_type = "tv" if media_type in ("series", "tv") else "movie"
+
+        if actors:
+                cast_ids = await self.__get_person_ids(actors)
+                if cast_ids:
+                    params["with_cast"] = ",".join(cast_ids)
+
+        if genre:
+            genre_id = await self.__get_genre_id(genre, media_type)
+            if genre_id:
+                params["with_genres"] = genre_id
+
+        async with AsyncClient() as client:
+            response = await client.get(
+                        f"{self.BASE_URL}/discover/{media_type}",
+                        params=params,
+                        headers=self.headers)
+            results = response.json().get("results")
+
+        # Filter title manually
+            if title:
+                results = [
+                    r for r in results
+                    if title.lower() in r.get("title").lower() 
+                ]
+            
+        return results
+
+
+
+    async def __get_genre(self, id: int, media_type: str = "movie"):
+        async with AsyncClient() as client:
+            resp = await client.get(
+                        f"{self.BASE_URL}/genre/{media_type}/list",
+                        headers=self.headers)
             genres = resp.json().get("genres", [])
             for genre in genres:
                 if genre["id"] == id:
@@ -125,10 +136,11 @@ class TMDBClient(MovieDataSupplier):
 
 
         return Movie(
-            title=api_movie.get("title"),
-            year=api_movie.get("release_date").split("-")[0],
-            genres=movie_genres,
-            poster_url=f"https://image.tmdb.org/t/p/w500{api_movie['poster_path']}" if api_movie.get("poster_path") else None,
-            source="tmdb"
+            movie_id = api_movie.get("id"),
+            title = api_movie.get("title"),
+            year = api_movie.get("release_date").split("-")[0],
+            genres = movie_genres,
+            poster_url = f"https://image.tmdb.org/t/p/w500{api_movie['poster_path']}" if api_movie.get("poster_path") else None,
+            supplier = "tmdb"
         )
     

@@ -1,9 +1,10 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List, Optional
-from schemas.movie import Movie
+from schemas.movie import Movie, SearchResponse
 
 
-class MovieDataSupplier(ABC):
+class Supplier(ABC):
+    @abstractmethod
     async def search(
         self,
         title: Optional[str],

@@ -1,8 +1,8 @@
 from typing import Annotated, List, Optional
-from clients.base import MovieDataSupplier
-from clients.omdb_client import OMDBClient
-from clients.tmdb_client import TMDBClient
-from fastapi import APIRouter, Query, Depends
+from clients.base import Supplier
+from clients.omdb_supplier import OMDBSupplier
+from clients.tmdb_supplier import TMDBSupplier
+from fastapi import APIRouter, Query
 from services.movie_service import MovieService
 
 router = APIRouter()
@@ -14,13 +14,13 @@ def get_movie_service():
 
 
 
-def get_movie_supplier(supplier: str) -> MovieDataSupplier:
+def get_movie_supplier(supplier: str) -> Supplier:
     match supplier:
         case "omdb":
-            return OMDBClient()
+            return OMDBSupplier()
         case _:
-            return TMDBClient()
-    
+            return TMDBSupplier()
+
 
 
 @router.get("/search")

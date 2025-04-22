@@ -1,12 +1,12 @@
 from typing import List, Optional
-from clients.base import MovieDataSupplier
+from clients.base import Supplier
 from schemas.movie import Movie
 from config.settings import settings
 from httpx import AsyncClient
 from fastapi import HTTPException
 
 
-class OMDBClient(MovieDataSupplier):
+class OMDBSupplier(Supplier):
     BASE_URL = "https://www.omdbapi.com/"
 
     async def search(
@@ -26,17 +26,18 @@ class OMDBClient(MovieDataSupplier):
         }
 
         if media_type:
-            params["type"] = media_type
+            params["type"] = "series" if media_type == "series" else "movie"
 
         async with AsyncClient() as client:
             response = await client.get(self.BASE_URL, params=params)
             data = response.json()
 
         results = data.get("Search", [])
-        return [self._convert_to_schema(item) for item in results]
+        return [self.__convert_to_schema(item) for item in results]
 
-    def _convert_to_schema(self, api_movie) -> Movie:
+    def __convert_to_schema(self, api_movie) -> Movie:
         return Movie(
+            movie_id = api_movie.get("imdbID"),
             title=api_movie.get("Title"),
             year=api_movie.get("Year"),
             genres=[],  # OMDB doesn't provide genre here
