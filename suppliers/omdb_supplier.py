@@ -1,4 +1,5 @@
 from typing import List, Optional
+from cache import Cache
 from suppliers.base import Supplier
 from schemas.movie import Movie
 from config.settings import settings
@@ -8,6 +9,9 @@ from fastapi import HTTPException
 
 class OMDBSupplier(Supplier):
     BASE_URL = "https://www.omdbapi.com/"
+
+    def __init__(self, cache: Cache):
+        self.cache = cache
 
     async def search(
         self,

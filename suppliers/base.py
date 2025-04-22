@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from schemas.movie import Movie, SearchResponse
+from schemas.movie import Movie
 
 
 class Supplier(ABC):
