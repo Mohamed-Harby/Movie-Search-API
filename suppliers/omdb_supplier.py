@@ -1,5 +1,5 @@
 from typing import List, Optional
-from clients.base import Supplier
+from suppliers.base import Supplier
 from schemas.movie import Movie
 from config.settings import settings
 from httpx import AsyncClient
