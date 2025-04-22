@@ -10,6 +10,7 @@ class Supplier(ABC):
         title: Optional[str],
         media_type: str,
         genre: Optional[str],
-        actors: Optional[List[str]]
+        actors: Optional[List[str]],
+        page: int
     ) -> List[Movie]:
         pass

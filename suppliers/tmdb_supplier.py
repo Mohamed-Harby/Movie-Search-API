@@ -8,9 +8,9 @@ from fastapi import HTTPException
 class TMDBSupplier(Supplier):
     BASE_URL = "https://api.themoviedb.org/3"
 
-    def __init__(self, api_key: str):
+    def __init__(self):
         self.headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {settings.TMDB_API_KEY}",
             "accept": "application/json"
         }
 
@@ -19,24 +19,19 @@ class TMDBSupplier(Supplier):
             title: Optional[str],
             media_type: str,
             actors: Optional[List[str]],
-            genre: Optional[str]
+            genre: Optional[str],
+            page: int
         ) -> List[Movie]:
         
         if not title and not (actors or genre):
             raise HTTPException(status_code=400, detail="At least one of title, actors, or genre must be provided!")        
         
         if actors or genre:
-            results = await self.__search_by_actors_and_genre(title, media_type, actors, genre)
+            results = await self.__search_by_actors_and_genre(title, media_type, actors, genre, page)
 
-        results = await self.__search_by_title(title, media_type)
+        results = await self.__search_by_title(title, media_type, page)
         
         return [self.__convert_to_schema(item) for item in results]
-
-        movies = []
-        for r in results:
-            movies.append(await self.__convert_to_schema(r))
-
-        return movies
     
 
 
@@ -67,10 +62,10 @@ class TMDBSupplier(Supplier):
         return None
 
 
-    async def __search_by_title(self, title: str, media_type: str):
+    async def __search_by_title(self, title: str, media_type: str, page: int):
         async with AsyncClient() as client:
             response = await client.get(
-                f"{self.BASE_URL}/search/{media_type}?query={title}",
+                f"{self.BASE_URL}/search/{media_type}?query={title}&page={page}",
                 headers=self.headers)
             results = response.json().get("results")
             return results
@@ -80,7 +75,8 @@ class TMDBSupplier(Supplier):
             title: str,
             media_type: str,
             actors: List[str],
-            genre: str
+            genre: str,
+            page: int
     ):
         params = {}
         results = []
@@ -97,6 +93,8 @@ class TMDBSupplier(Supplier):
             genre_id = await self.__get_genre_id(genre, media_type)
             if genre_id:
                 params["with_genres"] = genre_id
+
+        params["page"] = page
 
         async with AsyncClient() as client:
             response = await client.get(

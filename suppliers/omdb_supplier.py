@@ -13,8 +13,7 @@ class OMDBSupplier(Supplier):
         self,
         title: Optional[str],
         media_type: Optional[str],
-        genre: Optional[str],  # not used by OMDB API
-        actors: Optional[List[str]]  # not used by OMDB API
+        page: int
     ) -> List[Movie]:
         
         if not title:
@@ -22,7 +21,8 @@ class OMDBSupplier(Supplier):
 
         params = {
             "apikey": settings.OMDB_API_KEY,
-            "s": title
+            "s": title,
+            "page": page
         }
 
         if media_type:
