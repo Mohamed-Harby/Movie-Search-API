@@ -25,22 +25,16 @@ class TMDBSupplier(Supplier):
         genre: Optional[str] = None,
         page: int = 1,
     ) -> List[Movie]:
+
         # Ensure that at least one search criterion is provided
-        if not title and not (actors or genre):
-            raise HTTPException(
-                status_code=400,
-                detail="At least one of title, actors, or genre must be provided!",
-            )
+        if not any([title, actors, genre]):
+            raise HTTPException(status_code=400, detail="At least one filter required.")
 
-        # Choose appropriate search strategy based on input
-        if actors or genre:
-            results = await self.search_by_actors_and_genre(
-                media_type, actors, genre, page
-            )
-        else:
-            results = await self.search_by_title(title, media_type, page)
+        # Dispatch based on what fields are provided
+        if title and not (actors or genre):
+            return await self.search_by_title(title, media_type, page)
 
-        return results
+        return await self.search_by_actors_and_genre(media_type, actors, genre, page)
 
     async def get_person_ids(self, names: List[str]) -> List[str]:
         # Get tmdb person IDs for a list of actor names
