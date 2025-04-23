@@ -12,6 +12,8 @@ class MovieService:
 
     def __init__(self, cache: Cache):
         self.cache = cache
+        self.omdb_supplier = OMDBSupplier(cache)
+        self.tmdb_supplier = TMDBSupplier(cache)
 
     async def search_movies(
         self,
@@ -39,21 +41,21 @@ class MovieService:
         # IF searching by actors or genre or both, only tmdb can handle this
         if actors or genre:
             try:
-                return await TMDBSupplier(self.cache).search(
+                return await self.tmdb_supplier.search(
                     actors=actors, genre=genre, media_type=media_type, page=page
                 )
             except HTTPException as exception:
                 raise exception
 
-        # If only title is provided, try OMDB first
+        # If only title is provided, try omdb first
         try:
-            return await OMDBSupplier(self.cache).search(
+            return await self.omdb_supplier.search(
                 title=title, media_type=media_type, page=page
             )
         except HTTPException as exception:
             try:
                 # If omdb supplier failed, fallback to tmdb
-                return await TMDBSupplier(self.cache).search(
+                return await self.tmdb_supplier.search(
                     title=title,
                     media_type=media_type,
                     page=page,
