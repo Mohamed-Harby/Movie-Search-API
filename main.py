@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from typing import Annotated, List, Optional
 from fastapi import Depends, Query
 from dependencies import get_movie_service
+from schemas.movie import Movie
 from services.movie_service import MovieService
 
 app = FastAPI()
@@ -18,6 +19,6 @@ async def search_movies(
     actors: Annotated[Optional[List[str]], Query()] = None,
     genre: Annotated[Optional[str], Query()] = None,
     page: int = 1,
-):
+) -> List[Movie]:
     
     return await service.search_movies(title, media_type, actors, genre, page)

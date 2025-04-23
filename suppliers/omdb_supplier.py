@@ -31,14 +31,22 @@ class OMDBSupplier(Supplier):
 
         if media_type:
             params["type"] = "series" if media_type == "series" else "movie"
+        
 
+        cache_key = f"omdb:search:title:{title}:page:{page}"
+        cached_value = self.cache.get(cache_key)
+        if cached_value:
+            return cached_value
+        
         async with AsyncClient() as client:
             response = await client.get(self.BASE_URL, params=params)
             data = response.json()
 
         results = data.get("Search", [])
-        return [self.__convert_to_schema(item) for item in results]
+        results = [self.__convert_to_schema(item) for item in results]
 
+        self.cache.set(cache_key, results, 86400)
+        
     def __convert_to_schema(self, api_movie) -> Movie:
         return Movie(
             movie_id = api_movie.get("imdbID"),
