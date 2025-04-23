@@ -1,5 +1,5 @@
 from typing import List, Optional
-from httpx import AsyncClient
+from httpx import AsyncClient, HTTPStatusError
 from cache import Cache
 from suppliers.supplier import Supplier
 from config.settings import settings
@@ -46,7 +46,7 @@ class TMDBSupplier(Supplier):
         ids.sort()
         return ids
 
-    async def get_person_id(self, name: str) -> str:
+    async def get_person_id(self, name: str) -> Optional[str]:
         # Check cache first
         cache_key = f"tmdb:person:name:{name.lower()}"
         cached_value = self.cache.get(cache_key)
@@ -54,19 +54,12 @@ class TMDBSupplier(Supplier):
             return cached_value
 
         # Query tmdb API for person ID
-        try:
-            async with AsyncClient() as client:
-                response = await client.get(
-                    f"{self.BASE_URL}/search/person",
-                    params={"query": name},
-                    headers=self.headers,
-                )
-                response.raise_for_status()
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Unexpected error from tmdb: {str(e)}",
-            )
+        response = self.make_request(
+            f"{self.BASE_URL}/search/person",
+            params={"query": name},
+            headers=self.headers,
+        )
+
         results = response.json().get("results")
         if results:
             person_id = str(results[0]["id"])
@@ -88,21 +81,15 @@ class TMDBSupplier(Supplier):
         if cached_value:
             return cached_value
 
-        try:
-            async with AsyncClient() as client:
-                response = await client.get(
-                    f"{self.BASE_URL}/genre/{media_type}/list", headers=self.headers
-                )
-                response.raise_for_status()
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Unexpected error from tmdb: {str(e)}",
-            )
+        response = self.make_request(
+            f"{self.BASE_URL}/genre/{media_type}/list", headers=self.headers
+        )
 
         genres = response.json().get("genres", [])
         genres = sorted(genres, key=lambda genre: genre["name"])
+
         self.cache.set(cache_key, genres, 86400)
+
         return genres
 
     async def search_by_title(self, title: str, media_type: str, page: int):
@@ -115,18 +102,11 @@ class TMDBSupplier(Supplier):
             ]  # Deserialize from json to Movie
 
         # Query tmdb API by title
-        try:
-            async with AsyncClient() as client:
-                response = await client.get(
-                    f"{self.BASE_URL}/search/{media_type}?query={title}&page={page}",
-                    headers=self.headers,
-                )
-                response.raise_for_status()
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Unexpected error from tmdb: {str(e)}",
-            )
+        response = self.make_request(
+            f"{self.BASE_URL}/search/{media_type}",
+            params={"query": title, "page": page},
+            headers=self.headers,
+        )
 
         results = response.json().get("results")
         # Convert raw data to Movie schema
@@ -171,18 +151,11 @@ class TMDBSupplier(Supplier):
             ]  # Deserialize from json to Movie
 
         # Query tmdb API for filtered discovery results
-        try:
-            async with AsyncClient() as client:
-                response = await client.get(
-                    f"{self.BASE_URL}/discover/{media_type}",
-                    params=params,
-                    headers=self.headers,
-                )
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Unexpected error from tmdb: {str(e)}",
-            )
+        response = self.make_request(
+            f"{self.BASE_URL}/discover/{media_type}",
+            params=params,
+            headers=self.headers,
+        )
 
         results = response.json().get("results")
         results = [await self.convert_to_schema(item) for item in results]
@@ -218,3 +191,19 @@ class TMDBSupplier(Supplier):
             ),
             supplier="tmdb",  # Indicate data source
         )
+
+    async def make_request(self, url: str, params: dict = None) -> dict:
+        try:
+            async with AsyncClient() as client:
+                response = await client.get(url, params=params, headers=self.headers)
+                response.raise_for_status()  # Raise error for bad status codes
+                return response.json()
+        except HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"Error from tmdb: {e.response.text}",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected error from tmdb: {str(e)}"
+            )
