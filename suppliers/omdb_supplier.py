@@ -48,9 +48,20 @@ class OMDBSupplier(Supplier):
             ]  # Deserialize cached JSON list into Movie objects
 
         # Make a request to omdb API
-        async with AsyncClient() as client:
-            response = await client.get(self.BASE_URL, params=params)
-            data = response.json()
+        try:
+            async with AsyncClient() as client:
+                response = await client.get(self.BASE_URL, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                if not data.get("results"):
+                    raise HTTPException(
+                        status_code=404, detail="No tmdb results found."
+                    )
+        except Exception as exception:
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected error from tmdb: {str(exception)}"
+            )
 
         # Extract results and convert them into Movie objects
         results = data.get("Search", [])

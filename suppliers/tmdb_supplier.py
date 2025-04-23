@@ -54,13 +54,20 @@ class TMDBSupplier(Supplier):
             return cached_value
 
         # Query tmdb API for person ID
-        async with AsyncClient() as client:
-            resp = await client.get(
-                f"{self.BASE_URL}/search/person",
-                params={"query": name},
-                headers=self.headers,
+        try:
+            async with AsyncClient() as client:
+                response = await client.get(
+                    f"{self.BASE_URL}/search/person",
+                    params={"query": name},
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error from tmdb: {str(e)}",
             )
-        results = resp.json().get("results")
+        results = response.json().get("results")
         if results:
             person_id = str(results[0]["id"])
             self.cache.set(cache_key, person_id, 86400)
@@ -81,12 +88,19 @@ class TMDBSupplier(Supplier):
         if cached_value:
             return cached_value
 
-        async with AsyncClient() as client:
-            resp = await client.get(
-                f"{self.BASE_URL}/genre/{media_type}/list", headers=self.headers
+        try:
+            async with AsyncClient() as client:
+                response = await client.get(
+                    f"{self.BASE_URL}/genre/{media_type}/list", headers=self.headers
+                )
+                response.raise_for_status()
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error from tmdb: {str(e)}",
             )
-            genres = resp.json().get("genres", [])
 
+        genres = response.json().get("genres", [])
         genres = sorted(genres, key=lambda genre: genre["name"])
         self.cache.set(cache_key, genres, 86400)
         return genres
@@ -101,13 +115,20 @@ class TMDBSupplier(Supplier):
             ]  # Deserialize from json to Movie
 
         # Query tmdb API by title
-        async with AsyncClient() as client:
-            response = await client.get(
-                f"{self.BASE_URL}/search/{media_type}?query={title}&page={page}",
-                headers=self.headers,
+        try:
+            async with AsyncClient() as client:
+                response = await client.get(
+                    f"{self.BASE_URL}/search/{media_type}?query={title}&page={page}",
+                    headers=self.headers,
+                )
+                response.raise_for_status()
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error from tmdb: {str(e)}",
             )
-            results = response.json().get("results")
 
+        results = response.json().get("results")
         # Convert raw data to Movie schema
         results = [await self.convert_to_schema(item) for item in results]
 
@@ -145,22 +166,27 @@ class TMDBSupplier(Supplier):
 
         if cached_value:
             # Return cached results if available
-            results = [
+            return [
                 Movie(**item) for item in cached_value
             ]  # Deserialize from json to Movie
 
-        else:
-            # Query tmdb API for filtered discovery results
+        # Query tmdb API for filtered discovery results
+        try:
             async with AsyncClient() as client:
                 response = await client.get(
                     f"{self.BASE_URL}/discover/{media_type}",
                     params=params,
                     headers=self.headers,
                 )
-                results = response.json().get("results")
+        except Exception as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error from tmdb: {str(e)}",
+            )
 
-            results = [await self.convert_to_schema(item) for item in results]
-            self.cache.set(cache_key, [movie.model_dump() for movie in results], 86400)
+        results = response.json().get("results")
+        results = [await self.convert_to_schema(item) for item in results]
+        self.cache.set(cache_key, [movie.model_dump() for movie in results], 86400)
 
         return results
 
