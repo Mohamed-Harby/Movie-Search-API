@@ -14,30 +14,26 @@ class OMDBSupplier(Supplier):
         self.cache = cache
 
     async def search(
-        self,
-        title: Optional[str],
-        media_type: Optional[str],
-        page: int
+        self, title: Optional[str], media_type: Optional[str], page: int
     ) -> List[Movie]:
-        
-        if not title:
-            raise HTTPException(status_code=400, detail="The title is a required field!")
 
-        params = {
-            "apikey": settings.OMDB_API_KEY,
-            "s": title,
-            "page": page
-        }
+        if not title:
+            raise HTTPException(
+                status_code=400, detail="The title is a required field!"
+            )
+
+        params = {"apikey": settings.OMDB_API_KEY, "s": title, "page": page}
 
         if media_type:
             params["type"] = "series" if media_type == "series" else "movie"
-        
 
-        cache_key = f"omdb:search:title:{title}:page:{page}"
+        cache_key = f"omdb:search:title:{title}:type:{media_type}:page:{page}"
         cached_value = self.cache.get(cache_key)
         if cached_value:
-            return cached_value
-        
+            return [
+                Movie(**item) for item in cached_value
+            ]  # Deserialize from json to Movie
+
         async with AsyncClient() as client:
             response = await client.get(self.BASE_URL, params=params)
             data = response.json()
@@ -45,14 +41,15 @@ class OMDBSupplier(Supplier):
         results = data.get("Search", [])
         results = [self.__convert_to_schema(item) for item in results]
 
-        self.cache.set(cache_key, results, 86400)
-        
+        self.cache.set(cache_key, [movie.model_dump() for movie in results], 86400)
+        return results
+
     def __convert_to_schema(self, api_movie) -> Movie:
         return Movie(
-            movie_id = api_movie.get("imdbID"),
+            movie_id=api_movie.get("imdbID"),
             title=api_movie.get("Title"),
             year=api_movie.get("Year"),
             genres=[],  # OMDB doesn't provide genre here
             poster_url=api_movie.get("Poster"),
-            source="omdb"
+            supplier="omdb",
         )
