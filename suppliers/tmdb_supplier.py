@@ -8,10 +8,10 @@ from fastapi import HTTPException
 
 
 class TMDBSupplier(Supplier):
-    BASE_URL = "https://api.themoviedb.org/3"
+    BASE_URL = "https://api.themoviedb.org/3"  # tmdb API base endpoint
 
     def __init__(self, cache: Cache):
-        self.cache = cache
+        self.cache = cache  # Injected cache instance
         self.headers = {
             "Authorization": f"Bearer {settings.TMDB_API_KEY}",
             "accept": "application/json",
@@ -25,13 +25,14 @@ class TMDBSupplier(Supplier):
         genre: Optional[str] = None,
         page: int = 1,
     ) -> List[Movie]:
-
+        # Ensure that at least one search criterion is provided
         if not title and not (actors or genre):
             raise HTTPException(
                 status_code=400,
                 detail="At least one of title, actors, or genre must be provided!",
             )
 
+        # Choose appropriate search strategy based on input
         if actors or genre:
             results = await self.search_by_actors_and_genre(
                 media_type, actors, genre, page
@@ -42,6 +43,7 @@ class TMDBSupplier(Supplier):
         return results
 
     async def get_person_ids(self, names: List[str]) -> List[str]:
+        # Get tmdb person IDs for a list of actor names
         ids = []
         for name in names:
             person_id = await self.get_person_id(name)
@@ -51,11 +53,13 @@ class TMDBSupplier(Supplier):
         return ids
 
     async def get_person_id(self, name: str) -> str:
+        # Check cache first
         cache_key = f"tmdb:person:name:{name.lower()}"
         cached_value = self.cache.get(cache_key)
         if cached_value:
             return cached_value
 
+        # Query tmdb API for person ID
         async with AsyncClient() as client:
             resp = await client.get(
                 f"{self.BASE_URL}/search/person",
@@ -70,12 +74,14 @@ class TMDBSupplier(Supplier):
         return None
 
     async def get_genre_id(self, name: str, media_type: str) -> Optional[str]:
+        # Get genre ID based on genre name and media type
         genres = await self.get_type_genres(media_type)
         for genre in genres:
             if genre["name"].lower() == name.lower():
                 return genre["id"]
 
     async def get_type_genres(self, media_type: str) -> list:
+        # Retrieve genres for a given media type, using cache if available
         cache_key = f"tmdb:type:{media_type.lower()}"
         cached_value = self.cache.get(cache_key)
         if cached_value:
@@ -92,6 +98,7 @@ class TMDBSupplier(Supplier):
         return genres
 
     async def search_by_title(self, title: str, media_type: str, page: int):
+        # Check if results are cached
         cache_key = f"tmdb:search:title:{title}:type:{media_type}:page:{page}"
         cached_value = self.cache.get(cache_key)
         if cached_value:
@@ -99,6 +106,7 @@ class TMDBSupplier(Supplier):
                 Movie(**item) for item in cached_value
             ]  # Deserialize from json to Movie
 
+        # Query tmdb API by title
         async with AsyncClient() as client:
             response = await client.get(
                 f"{self.BASE_URL}/search/{media_type}?query={title}&page={page}",
@@ -106,8 +114,10 @@ class TMDBSupplier(Supplier):
             )
             results = response.json().get("results")
 
+        # Convert raw data to Movie schema
         results = [await self.convert_to_schema(item) for item in results]
 
+        # Cache the results
         self.cache.set(cache_key, [movie.model_dump() for movie in results], 86400)
 
         return results
@@ -118,13 +128,16 @@ class TMDBSupplier(Supplier):
         params = {}
         results = []
 
+        # Normalize media type for tmdb (movie or tv)
         media_type = "tv" if media_type in ("series", "tv") else "movie"
 
+        # Add actor filter to query
         if actors:
             cast_ids = await self.get_person_ids(actors)
             if cast_ids:
                 params["with_cast"] = ",".join(cast_ids)
 
+        # Add genre filter to query
         if genre:
             genre_id = await self.get_genre_id(genre, media_type)
             if genre_id:
@@ -132,16 +145,18 @@ class TMDBSupplier(Supplier):
 
         params["page"] = page
 
+        # Generate cache key for this combination of filters
         cache_key = f"tmdb:search:genre:{genre_id}:actors:{cast_ids}:type:{media_type}"
         cached_value = self.cache.get(cache_key)
 
-        results = []
         if cached_value:
+            # Return cached results if available
             results = [
                 Movie(**item) for item in cached_value
             ]  # Deserialize from json to Movie
 
         else:
+            # Query tmdb API for filtered discovery results
             async with AsyncClient() as client:
                 response = await client.get(
                     f"{self.BASE_URL}/discover/{media_type}",
@@ -156,6 +171,7 @@ class TMDBSupplier(Supplier):
         return results
 
     async def get_genre(self, id: int, media_type: str = "movie") -> Optional[str]:
+        # Retrieve genre name from ID
         type_genres = await self.get_type_genres(media_type)
         for type_genre in type_genres:
             if type_genre["id"] == id:
@@ -163,9 +179,10 @@ class TMDBSupplier(Supplier):
         return None
 
     async def convert_to_schema(self, api_movie):
-
+        # Convert raw tmdb movie data into the Movie schema format
         movie_genres = []
 
+        # Fetch genre names for genre IDs
         for genre in api_movie.get("genre_ids"):
             movie_genres.append(await self.get_genre(genre))
 
@@ -179,5 +196,5 @@ class TMDBSupplier(Supplier):
                 if api_movie.get("poster_path")
                 else None
             ),
-            supplier="tmdb",
+            supplier="tmdb",  # Indicate data source
         )
