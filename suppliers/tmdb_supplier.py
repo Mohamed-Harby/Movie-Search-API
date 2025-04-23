@@ -95,7 +95,7 @@ class TMDBSupplier(Supplier):
     async def search_by_title(self, title: str, media_type: str, page: int):
         # Check if results are cached
         cache_key = f"tmdb:search:title:{title}:type:{media_type}:page:{page}"
-        cached_value = self.cache.get(cache_key)
+        cached_value = self.cache.get(cache_key, Movie)
         if cached_value:
             return cached_value
 
@@ -140,7 +140,7 @@ class TMDBSupplier(Supplier):
 
         # Generate cache key for this combination of filters
         cache_key = f"tmdb:search:genre:{genre_id}:actors:{cast_ids}:type:{media_type}"
-        cached_value = self.cache.get(cache_key)
+        cached_value = self.cache.get(cache_key, Movie)
 
         if cached_value:
             # Return cached results if available

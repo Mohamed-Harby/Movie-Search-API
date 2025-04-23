@@ -41,7 +41,7 @@ class OMDBSupplier(Supplier):
         cache_key = f"omdb:search:title:{title}:type:{media_type}:page:{page}"
 
         # Check if the result is already in cache
-        cached_value = self.cache.get(cache_key)
+        cached_value = self.cache.get(cache_key, Movie)
         if cached_value:
             cached_value
 
@@ -52,13 +52,13 @@ class OMDBSupplier(Supplier):
                 response.raise_for_status()
                 data = response.json()
 
-                if not data.get("results"):
+                if not data.get("Search"):
                     raise HTTPException(
-                        status_code=404, detail="No tmdb results found."
+                        status_code=404, detail="No omdb results found."
                     )
         except Exception as exception:
             raise HTTPException(
-                status_code=500, detail=f"Unexpected error from tmdb: {str(exception)}"
+                status_code=500, detail=f"Unexpected error from omdb: {str(exception)}"
             )
 
         # Extract results and convert them into Movie objects
@@ -66,7 +66,7 @@ class OMDBSupplier(Supplier):
         results = [self.convert_to_schema(item) for item in results]
 
         # Cache the results for 24 hours (86400 seconds)
-        self.cache.set(cache_key, [movie.model_dump() for movie in results], 86400)
+        self.cache.set(cache_key, results, 86400)
 
         return results
 
