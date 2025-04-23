@@ -1,7 +1,7 @@
 from typing import List, Optional
 from httpx import AsyncClient
 from cache import Cache
-from suppliers.base import Supplier
+from suppliers.supplier import Supplier
 from config.settings import settings
 from schemas.movie import Movie
 from fastapi import HTTPException

@@ -1,6 +1,6 @@
 from typing import List, Optional
 from cache import Cache
-from suppliers.base import Supplier
+from suppliers.supplier import Supplier
 from schemas.movie import Movie
 from config.settings import settings
 from httpx import AsyncClient
@@ -14,7 +14,12 @@ class OMDBSupplier(Supplier):
         self.cache = cache  # Injected cache instance for storing/retrieving responses
 
     async def search(
-        self, title: Optional[str], media_type: Optional[str], page: int
+        self,
+        title: Optional[str],
+        media_type: str,
+        genre: Optional[str] = None,
+        actors: Optional[List[str]] = None,
+        page: int = 1,
     ) -> List[Movie]:
 
         # Title is mandatory for omdb search

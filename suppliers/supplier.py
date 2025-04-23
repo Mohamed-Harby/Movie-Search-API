@@ -7,10 +7,10 @@ class Supplier(ABC):
     @abstractmethod
     async def search(
         self,
-        title: Optional[str],
-        media_type: str,
-        genre: Optional[str],
-        actors: Optional[List[str]],
-        page: int
+        title: Optional[str] = None,
+        media_type: str = "movie",
+        genre: Optional[str] = None,
+        actors: Optional[List[str]] = None,
+        page: int = 1,
     ) -> List[Movie]:
         pass

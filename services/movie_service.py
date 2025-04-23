@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from fastapi import HTTPException
 from cache import Cache
-from suppliers.base import Supplier
+from suppliers.supplier import Supplier
 from schemas.movie import Movie
 from suppliers.omdb_supplier import OMDBSupplier
 from suppliers.tmdb_supplier import TMDBSupplier
