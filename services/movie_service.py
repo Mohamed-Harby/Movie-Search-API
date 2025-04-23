@@ -38,27 +38,21 @@ class MovieService:
                 detail="Provide only title or any other filters without title.",
             )
 
-        # IF searching by actors or genre or both, only tmdb can handle this
+        # Case 1: IF searching by actors or genre or both, only tmdb can handle this
         if actors or genre:
-            try:
-                return await self.tmdb_supplier.search(
-                    actors=actors, genre=genre, media_type=media_type, page=page
-                )
-            except HTTPException as exception:
-                raise exception
+            return await self.tmdb_supplier.search(
+                actors=actors, genre=genre, media_type=media_type, page=page
+            )
 
-        # If only title is provided, try omdb first
+        # Case 2: If only title is provided, try omdb first, then fallback to tmdb
         try:
             return await self.omdb_supplier.search(
                 title=title, media_type=media_type, page=page
             )
-        except HTTPException as exception:
-            try:
-                # If omdb supplier failed, fallback to tmdb
-                return await self.tmdb_supplier.search(
-                    title=title,
-                    media_type=media_type,
-                    page=page,
-                )
-            except HTTPException:  # Raise exception if both suppliers failed
-                return exception
+        except HTTPException:
+            # If omdb supplier failed, fallback to tmdb
+            return await self.tmdb_supplier.search(
+                title=title,
+                media_type=media_type,
+                page=page,
+            )
