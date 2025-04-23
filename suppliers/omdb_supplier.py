@@ -43,9 +43,7 @@ class OMDBSupplier(Supplier):
         # Check if the result is already in cache
         cached_value = self.cache.get(cache_key)
         if cached_value:
-            return [
-                Movie(**item) for item in cached_value
-            ]  # Deserialize cached JSON list into Movie objects
+            cached_value
 
         # Make a request to omdb API
         try:

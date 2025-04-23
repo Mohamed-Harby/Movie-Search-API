@@ -21,9 +21,7 @@ async def test_result_is_cached_search_by_title(cache, supplier):
         title="last", media_type="movie", page=1
     )
     cached_result = cache.get(f"tmdb:search:title:last:type:movie:page:1")
-    assert result == [
-        Movie(**item) for item in cached_result
-    ]  # Deserialize from json to Movie
+    assert result == cached_result
 
 
 @pytest.mark.asyncio
@@ -39,9 +37,7 @@ async def test_result_is_cached_search_by_actors_and_genre(cache, supplier):
     cached_result = cache.get(
         f"tmdb:search:genre:{genre_id}:actors:{[actor_id]}:type:movie"
     )
-    assert result == [
-        Movie(**item) for item in cached_result
-    ]  # Deserialize from json to Movie
+    assert result == cached_result
 
 
 @pytest.mark.asyncio

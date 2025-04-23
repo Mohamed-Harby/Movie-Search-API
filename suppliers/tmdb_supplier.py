@@ -97,9 +97,7 @@ class TMDBSupplier(Supplier):
         cache_key = f"tmdb:search:title:{title}:type:{media_type}:page:{page}"
         cached_value = self.cache.get(cache_key)
         if cached_value:
-            return [
-                Movie(**item) for item in cached_value
-            ]  # Deserialize from json to Movie
+            return cached_value
 
         # Query tmdb API by title
         response = self.make_request(
@@ -113,7 +111,7 @@ class TMDBSupplier(Supplier):
         results = [await self.convert_to_schema(item) for item in results]
 
         # Cache the results
-        self.cache.set(cache_key, [movie.model_dump() for movie in results], 86400)
+        self.cache.set(cache_key, results, 86400)
 
         return results
 
@@ -146,9 +144,7 @@ class TMDBSupplier(Supplier):
 
         if cached_value:
             # Return cached results if available
-            return [
-                Movie(**item) for item in cached_value
-            ]  # Deserialize from json to Movie
+            return cached_value
 
         # Query tmdb API for filtered discovery results
         response = self.make_request(
@@ -159,7 +155,7 @@ class TMDBSupplier(Supplier):
 
         results = response.json().get("results")
         results = [await self.convert_to_schema(item) for item in results]
-        self.cache.set(cache_key, [movie.model_dump() for movie in results], 86400)
+        self.cache.set(cache_key, results, 86400)
 
         return results
 
