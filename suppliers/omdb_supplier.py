@@ -49,7 +49,7 @@ class OMDBSupplier(Supplier):
         results = await self.make_request(params)
 
         # Convert results into Movie objects
-        results = [self.convert_to_schema(item) for item in results]
+        results = [await self.convert_to_schema(item) for item in results]
 
         # Cache the results for 24 hours (86400 seconds)
         self.cache.set(cache_key, results, 86400)
@@ -84,7 +84,7 @@ class OMDBSupplier(Supplier):
                 status_code=500, detail=f"Unexpected error from OMDB: {str(e)}"
             )
 
-    def convert_to_schema(self, api_movie) -> Movie:
+    async def convert_to_schema(self, api_movie) -> Movie:
         # Transform omdb API response format into internal Movie schema
         return Movie(
             movie_id=api_movie.get("imdbID"),

@@ -54,13 +54,12 @@ class TMDBSupplier(Supplier):
             return cached_value
 
         # Query tmdb API for person ID
-        response = self.make_request(
+        response = await self.make_request(
             f"{self.BASE_URL}/search/person",
             params={"query": name},
-            headers=self.headers,
         )
 
-        results = response.json().get("results")
+        results = response.get("results")
         if results:
             person_id = str(results[0]["id"])
             self.cache.set(cache_key, person_id, 86400)
@@ -81,11 +80,9 @@ class TMDBSupplier(Supplier):
         if cached_value:
             return cached_value
 
-        response = self.make_request(
-            f"{self.BASE_URL}/genre/{media_type}/list", headers=self.headers
-        )
+        response = await self.make_request(f"{self.BASE_URL}/genre/{media_type}/list")
 
-        genres = response.json().get("genres", [])
+        genres = response.get("genres", [])
         genres = sorted(genres, key=lambda genre: genre["name"])
 
         self.cache.set(cache_key, genres, 86400)
@@ -100,13 +97,12 @@ class TMDBSupplier(Supplier):
             return cached_value
 
         # Query tmdb API by title
-        response = self.make_request(
+        response = await self.make_request(
             f"{self.BASE_URL}/search/{media_type}",
             params={"query": title, "page": page},
-            headers=self.headers,
         )
 
-        results = response.json().get("results")
+        results = response.get("results")
         # Convert raw data to Movie schema
         results = [await self.convert_to_schema(item) for item in results]
 
@@ -147,13 +143,12 @@ class TMDBSupplier(Supplier):
             return cached_value
 
         # Query tmdb API for filtered discovery results
-        response = self.make_request(
+        response = await self.make_request(
             f"{self.BASE_URL}/discover/{media_type}",
             params=params,
-            headers=self.headers,
         )
 
-        results = response.json().get("results")
+        results = response.get("results")
         results = [await self.convert_to_schema(item) for item in results]
         self.cache.set(cache_key, results, 86400)
 
