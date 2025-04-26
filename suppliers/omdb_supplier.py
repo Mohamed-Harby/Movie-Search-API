@@ -1,9 +1,9 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from cache import Cache
 from suppliers.supplier import Supplier
 from schemas.movie import Movie
 from config.settings import settings
-from httpx import AsyncClient
+import httpx
 from fastapi import HTTPException
 
 
@@ -46,29 +46,43 @@ class OMDBSupplier(Supplier):
             cached_value
 
         # Make a request to omdb API
-        try:
-            async with AsyncClient() as client:
-                response = await client.get(self.BASE_URL, params=params)
-                response.raise_for_status()
-                data = response.json()
+        results = await self.make_request(params)
 
-                if not data.get("Search"):
-                    raise HTTPException(
-                        status_code=404, detail="No omdb results found."
-                    )
-        except Exception as exception:
-            raise HTTPException(
-                status_code=500, detail=f"Unexpected error from omdb: {str(exception)}"
-            )
-
-        # Extract results and convert them into Movie objects
-        results = data.get("Search", [])
+        # Convert results into Movie objects
         results = [self.convert_to_schema(item) for item in results]
 
         # Cache the results for 24 hours (86400 seconds)
         self.cache.set(cache_key, results, 86400)
 
         return results
+
+    async def make_request(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(self.BASE_URL, params=params)
+                response.raise_for_status()
+                data = response.json()
+
+                if not data.get("Search"):
+                    raise HTTPException(
+                        status_code=404, detail="No OMDB results found."
+                    )
+                return data.get("Search", [])
+
+        except httpx.HTTPStatusError as e:
+            raise HTTPException(
+                status_code=e.response.status_code,
+                detail=f"OMDB API returned an HTTP error: {e.response.text}",
+            )
+        except httpx.RequestError as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Error communicating with OMDB API: {str(e)}",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"Unexpected error from OMDB: {str(e)}"
+            )
 
     def convert_to_schema(self, api_movie) -> Movie:
         # Transform omdb API response format into internal Movie schema

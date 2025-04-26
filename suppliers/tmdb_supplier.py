@@ -1,5 +1,5 @@
 from typing import List, Optional
-from httpx import AsyncClient, HTTPStatusError
+import httpx
 from cache import Cache
 from suppliers.supplier import Supplier
 from config.settings import settings
@@ -188,18 +188,52 @@ class TMDBSupplier(Supplier):
             supplier="tmdb",  # Indicate data source
         )
 
+    from httpx import (
+        AsyncClient,
+        HTTPStatusError,
+        RequestError,
+        TimeoutException,
+        ConnectError,
+    )
+
     async def make_request(self, url: str, params: dict = None) -> dict:
         try:
-            async with AsyncClient() as client:
+            async with httpx.AsyncClient() as client:
                 response = await client.get(url, params=params, headers=self.headers)
-                response.raise_for_status()  # Raise error for bad status codes
+                response.raise_for_status()  # Raises HTTPStatusError for 4xx/5xx
                 return response.json()
-        except HTTPStatusError as e:
+
+        except httpx.HTTPStatusError as e:
+            # TMDB returned a 4xx or 5xx error
             raise HTTPException(
                 status_code=e.response.status_code,
-                detail=f"Error from tmdb: {e.response.text}",
+                detail=f"TMDB API error: {e.response.text}",
             )
-        except Exception as e:
+
+        except httpx.TimeoutException:
+            # Request timed out
             raise HTTPException(
-                status_code=500, detail=f"Unexpected error from tmdb: {str(e)}"
+                status_code=504,
+                detail="TMDB API request timed out.",
+            )
+
+        except httpx.ConnectError:
+            # DNS failure, refused connection, etc
+            raise HTTPException(
+                status_code=502,
+                detail="Could not connect to TMDB API.",
+            )
+
+        except httpx.RequestError as e:
+            # Other issues like invalid URL, network errors
+            raise HTTPException(
+                status_code=502,
+                detail=f"Request error communicating with TMDB: {str(e)}",
+            )
+
+        except Exception as e:
+            # Unexpected error
+            raise HTTPException(
+                status_code=500,
+                detail=f"Unexpected error communicating with TMDB: {str(e)}",
             )
