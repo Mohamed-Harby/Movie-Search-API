@@ -167,6 +167,8 @@ Notes
 
 - Implemented comprehensive error handling using `try except` block and implemented fallback to different supplier when exceptions happen.
 
+![image](https://github.com/user-attachments/assets/19e33d92-3dcc-4ff8-9721-90e3a8fb3060)
+
 
 ## Limitations and possible improvements
 ### Supporting all search criteria
