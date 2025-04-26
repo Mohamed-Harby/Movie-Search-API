@@ -121,12 +121,14 @@ class TMDBSupplier(Supplier):
         media_type = "tv" if media_type in ("series", "tv") else "movie"
 
         # Add actor filter to query
+        cast_ids = []
         if actors:
             cast_ids = await self.get_person_ids(actors)
             if cast_ids:
                 params["with_cast"] = ",".join(cast_ids)
 
         # Add genre filter to query
+        genre_id = None
         if genre:
             genre_id = await self.get_genre_id(genre, media_type)
             if genre_id:
@@ -135,7 +137,9 @@ class TMDBSupplier(Supplier):
         params["page"] = page
 
         # Generate cache key for this combination of filters
-        cache_key = f"tmdb:search:genre:{genre_id}:actors:{cast_ids}:type:{media_type}"
+        cache_key = (
+            f"tmdb:search:genre:{genre_id}:actors:{str(cast_ids)}:type:{media_type}"
+        )
         cached_value = self.cache.get(cache_key, Movie)
 
         if cached_value:

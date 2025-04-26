@@ -56,13 +56,21 @@ TMDB_API_KEY=<your-tmdb-api-key>
 ```
 
   
+5. Install and run redis server
+- For linux systems: [Install Redis on Linux](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/install-redis-on-linux/)
 
-5. Run the application:
+- For windows systems: [Install Redis on Windows](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/install-redis-on-windows/)
+
+- Using docker: [Install Redis on Docker](https://redis.io/kb/doc/1hcec8xg9w/how-can-i-install-redis-on-docker)
+
+Make sure that redis is running on port: `6379`
+
+7. Run the application:
 ```bash
 uvicorn main:app --reload
 ```
 
-6. Access the API documentation at `http://127.0.0.1:8000/docs`.
+8. Access the API documentation at `http://127.0.0.1:8000/docs`.
 
 
 ## API reference:
@@ -70,8 +78,6 @@ uvicorn main:app --reload
 **URL**: `/movies/search/`
 **Method**: `GET`
 **Description**: Search for movies based on various criteria such as title, media type, actors, and genre.
-
----
 
 **Response Body**:
 A list of movies matching the search criteria. Each movie is represented as a JSON object with the following fields:
@@ -85,7 +91,6 @@ A list of movies matching the search criteria. Each movie is represented as a JS
 | `poster_url`| `string`       | The URL of the movie's poster image.                                       |
 | `supplier`  | `string`       | The data source for the movie information (e.g., `"omdb"` or `"tmdb"`).   |
 
----
 **Error Responses**
 | Status Code | Description                                                                       |
 |-------------|-----------------------------------------------------------------------------------|
@@ -94,48 +99,106 @@ A list of movies matching the search criteria. Each movie is represented as a JS
 | `422`       | Validation error for query parameters (e.g., invalid data type).                 |
 | `500`       | Internal server error.                                                           |
 
----
 **Example Requests**
 1. **Search by Title**
 
 ```bash
-GET /movies/search/?title=Inception
+GET /movies/search/?title=Fight
 ```
 **Response**
 ```json
 [
     {
-        "movie_id": "tt1375666",
-        "title": "Inception",
-        "year": "2010",
-        "genres": ["Action", "Sci-Fi"],
-        "poster_url": "https://example.com/inception.jpg",
-        "supplier": "omdb"
-    }
+    "movie_id": "tt0137523",
+    "title": "Fight Club",
+    "year": "1999",
+    "genres": [],
+    "poster_url": "https://m.media-amazon.com/images/M/MV5BOTgyOGQ1NDItNGU3Ny00MjU3LTg2YWEtNmEyYjBiMjI1Y2M5XkEyXkFqcGc@._V1_SX300.jpg",
+    "supplier": "omdb"
+  },
+  ...
 ]
 ```
---- 
-2. **Search by Actors and Genre**
+2. **Search by Actors**
 
 ```bash
-GET GET /movies/search/?actors=Leonardo%20DiCaprio&genre=Drama
+GET /movies/search/?actors=actors=Tom%20Cruise&actors=Jeremy%20Renner
 ```
 **Response**
 ```json
 [
-    {
-        "movie_id": "tt0407887",
-        "title": "The Departed",
-        "year": "2006",
-        "genres": ["Crime", "Drama"],
-        "poster_url": "https://example.com/thedeparted.jpg",
-        "supplier": "tmdb"
-    }
+  {
+    "movie_id": "56292",
+    "title": "Mission: Impossible - Ghost Protocol",
+    "year": "2011",
+    "genres": [
+      "Action",
+      "Thriller",
+      "Adventure"
+    ],
+    "poster_url": "https://image.tmdb.org/t/p/w500/eRZTGx7GsiKqPch96k27LK005ZL.jpg",
+    "supplier": "tmdb"
+  },
+  {
+    "movie_id": "177677",
+    "title": "Mission: Impossible - Rogue Nation",
+    "year": "2015",
+    "genres": [
+      "Action",
+      "Adventure"
+    ],
+    "poster_url": "https://image.tmdb.org/t/p/w500/sGvcWcI99OTXLzghD7qXw00KaY5.jpg",
+    "supplier": "tmdb"
+  }
+]
+```
+3. **Search by Genre**
+
+```bash
+GET /movies/search/?genre=Action
+```
+**Response**
+```json
+[
+  {
+    "movie_id": "1197306",
+    "title": "A Working Man",
+    "year": "2025",
+    "genres": [
+      "Action",
+      "Crime",
+      "Thriller"
+    ],
+    "poster_url": "https://image.tmdb.org/t/p/w500/xUkUZ8eOnrOnnJAfusZUqKYZiDu.jpg",
+    "supplier": "tmdb"
+  },
+  ...
+]
+```
+4. **Search by Actors and Genre**
+
+```bash
+GET /movies/search/?actors=Ben%20Barnes&actors=Colin%20Firth&genre=Drama
+```
+**Response**
+```json
+[
+  {
+    "movie_id": "23488",
+    "title": "Dorian Gray",
+    "year": "2009",
+    "genres": [
+      "Fantasy",
+      "Drama",
+      "Thriller"
+    ],
+    "poster_url": "https://image.tmdb.org/t/p/w500/uRKt8nYdy7EO4uqeKVVpZRmqrxF.jpg",
+    "supplier": "tmdb"
+  }
 ]
 ```
 
---- 
-3. **nvalid Request (Missing Parameters)**
+5. **invalid Request (Missing Parameters)**
 
 ```bash
 GET /movies/search/
@@ -168,7 +231,6 @@ Notes
 - Implemented comprehensive error handling using `try except` block and implemented fallback to different supplier when exceptions happen.
 
 ![image](https://github.com/user-attachments/assets/19e33d92-3dcc-4ff8-9721-90e3a8fb3060)
-
 
 ## Limitations and possible improvements
 ### Supporting all search criteria
